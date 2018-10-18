@@ -1,5 +1,8 @@
 <template>
-  <line-chart :data="chartsData" :colors="colors"/>
+  <div>
+    <h1>Multi-series line chart</h1>
+    <line-chart :data="chartsData" :colors="colors" :names="names" :area="true"/>
+  </div>
 </template>
 
 <script>
@@ -29,7 +32,8 @@
                         {x: '2018-07-01', y: 4.6}
                     ]
                 ],
-                colors: ['#777', '#999']
+                colors: ['#80b081', '#b08097'],
+                names: ['Chart #1', 'Chart #2']
             }
         },
         components: {

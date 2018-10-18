@@ -1,14 +1,18 @@
 <template>
     <svg preserveAspectRatio="xMinYMin meet" :viewBox="viewBox">
-        <g ref="stage" v-bind:style="stageStyle">
+        <g v-bind:style="stageStyle">
+            <chart-legend :width="layout.width" :height="layout.height" :colors="colors" :names="names"/>
             <g ref="xAxis" v-bind:style="xAxisStyle"></g>
             <g ref="yAxis" v-bind:style="yAxisStyle"></g>
+            <g ref="series" v-bind:style="seriesStyle"></g>
         </g>
     </svg>
 </template>
 
 <script>
     import * as d3 from 'd3'
+
+    import ChartLegend from './Line/Legend'
 
     export default {
         props: {
@@ -33,6 +37,10 @@
                 type: Array,
                 default: () => []
             },
+            names: {
+                type: Array,
+                default: () => []
+            },
             parse: {
                 type: Object,
                 default: () => ({
@@ -53,6 +61,10 @@
                     x: {count: 10, format: d3.timeFormat("%b %d, %Y")},
                     y: {count: 30, format: d => d}
                 })
+            },
+            area: {
+                type: Boolean,
+                default: false
             }
         },
         data() {
@@ -66,7 +78,14 @@
         mounted() {
             this.drawAxis('xAxis')
             this.drawAxis('yAxis')
-            this.drawLines()
+
+            const $series = d3.select(this.$refs.series)
+
+            this.drawLines($series)
+
+            if (this.area) {
+                this.drawAreas($series)
+            }
         },
         methods: {
             initScale(axis) {
@@ -98,17 +117,28 @@
 
                 $axis.call(axisGenerator[ref])
             },
-            drawLines() {
-                const $stage = d3.select(this.$refs.stage)
+            drawLines($series) {
                 const line = d3.line().x(d => this.scale.x(this.parse.x(d.x))).y(d => this.scale.y(this.parse.y(d.y))).curve(d3.curveBasis)
-                const $line = $stage.selectAll('path').data(this.data)
+                const $line = $series.selectAll('.line').data(this.data)
 
                 $line.enter()
                     .append('path')
                     .attr('d', line)
+                    .attr('class', 'line')
                     .style('fill', 'none')
                     .style('stroke', (d, i) => this.colors[i])
                     .style('stroke-width', 2)
+            },
+            drawAreas($series) {
+                const area = d3.area().x(d => this.scale.x(this.parse.x(d.x))).y0(this.scale.y(0)).y1(d => this.scale.y(this.parse.y(d.y))).curve(d3.curveBasis)
+                const $area = $series.selectAll('.area').data(this.data)
+
+                $area.enter()
+                    .append('path')
+                    .attr('d', area)
+                    .style('fill', (d, i) => this.colors[i])
+                    .style('fill-opacity', 0.25)
+                    .style('stroke', 'none')
             }
         },
         computed: {
@@ -129,7 +159,13 @@
             },
             yAxisStyle() {
                 return {'transform': `translate(0px,0px)`}
+            },
+            seriesStyle() {
+                return {'transform': `translate(0px,-${this.layout.margin.top}px)`}
             }
+        },
+        components: {
+            ChartLegend
         }
     }
 </script>
