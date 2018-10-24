@@ -6,6 +6,8 @@
     <bar-chart :data="bar.data" :columns="bar.columns" :colors="bar.colors"/>
     <h1>Day / Hour Heatmap</h1>
     <heatmap :data="heatmap.data"/>
+    <h1>Pie chart with labels</h1>
+    <pie-chart :data="pie.data"/>
   </div>
 </template>
 
@@ -13,6 +15,7 @@
     import LineChart from './components/Line'
     import BarChart from './components/Bar'
     import Heatmap from './components/Heatmap'
+    import PieChart from './components/Pie'
 
     export default {
         name: 'app',
@@ -62,13 +65,22 @@
                         {day: '07', hour: '14', value: 54},
                         {day: '07', hour: '24', value: 84}
                     ]
+                },
+                pie: {
+                    data: [
+                        {name: 'CA', value: 555},
+                        {name: 'LX', value: 383},
+                        {name: 'IL', value: 225},
+                        {name: 'NY', value: 123}
+                    ]
                 }
             }
         },
         components: {
             LineChart,
             BarChart,
-            Heatmap
+            Heatmap,
+            PieChart
         }
     }
 </script>
