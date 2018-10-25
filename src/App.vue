@@ -68,10 +68,10 @@
                 },
                 pie: {
                     data: [
-                        {name: 'CA', value: 555},
-                        {name: 'LX', value: 383},
-                        {name: 'IL', value: 225},
-                        {name: 'NY', value: 123}
+                        {label: 'CA', value: 555},
+                        {label: 'LX', value: 383},
+                        {label: 'IL', value: 225},
+                        {label: 'NY', value: 123}
                     ]
                 }
             }

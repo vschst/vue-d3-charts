@@ -36,6 +36,8 @@
         },
         mounted() {
             this.drawSlices()
+            this.drawLabels()
+            this.drawLines()
         },
         methods: {
             pie: d3.pie().sort(null).value(d => d.value),
@@ -54,10 +56,50 @@
                     .enter()
                     .append('path')
                     .attr('d', this.arc())
-                    .style('fill', d => this.colorScale(d))
+                    .style('fill', (d, i) => this.colorScale(i))
                     .attr('class', 'slice')
 
                 $slice.exit().remove()
+            },
+            midAngle(d) {
+                return d.startAngle + (d.endAngle - d.startAngle) / 2
+            },
+            drawLabels() {
+                const $labels = d3.select(this.$refs.labels)
+                const $text = $labels.selectAll('text').data(this.pie(this.data))
+
+                $text.enter()
+                    .append('text')
+                    .attr('dy', '.35em')
+                    .text(d => d.data.label)
+                    .attr('transform', d => {
+                        const pos = this.outerArc().centroid(d)
+
+                        pos[0] = this.radius * ((this.midAngle(d) < Math.PI) ? 1 : -1)
+
+                        return `translate(${pos})`
+                    })
+                    .style('text-anchor', d => {
+                        return (this.midAngle(d) < Math.PI) ? 'start' : 'end'
+                    })
+
+                $text.exit().remove()
+            },
+            drawLines() {
+                const $lines = d3.select(this.$refs.lines)
+                const $polyline = $lines.selectAll('polyline').data(this.pie(this.data))
+
+                $polyline.enter()
+                    .append('polyline')
+                    .attr('points', d => {
+                        const pos = this.outerArc().centroid(d)
+
+                        pos[0] = this.radius * 0.95 * ((this.midAngle(d) < Math.PI) ? 1 : -1)
+
+                        return [this.arc().centroid(d), this.outerArc().centroid(d), pos]
+                    })
+
+                $polyline.exit().remove()
             }
         },
         computed: {
@@ -68,8 +110,26 @@
                 return `translate(${this.layout.width / 2},${this.layout.height / 2})`
             },
             radius() {
-                return Math.min(this.width, this.height) / 2
+                return Math.min(this.layout.width, this.layout.height) / 2
             }
         }
     }
 </script>
+
+<style>
+    path.slice{
+        stroke-width: 2px;
+    }
+
+    text {
+        font-size: 9pt;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    polyline{
+        opacity: .3;
+        stroke: black;
+        stroke-width: 1px;
+        fill: none;
+    }
+</style>
