@@ -1,11 +1,21 @@
 <template>
-    <svg preserveAspectRatio="xMinYMin meet" :viewBox="viewBox">
-        <g ref="stage" :transform="stageTransform">
-            <g ref="dayLabels" :transform="dayLabelsTransform"></g>
-            <g ref="timeLabels" :transform="timeLabelsTransform"></g>
-            <g ref="cards" :transform="cardsTransform"></g>
-        </g>
-    </svg>
+  <svg
+    :viewBox="viewBox"
+    preserveAspectRatio="xMinYMin meet">
+    <g
+      ref="stage"
+      :transform="stageTransform">
+      <g
+        ref="dayLabels"
+        :transform="dayLabelsTransform"/>
+      <g
+        ref="timeLabels"
+        :transform="timeLabelsTransform"/>
+      <g
+        ref="cards"
+        :transform="cardsTransform"/>
+    </g>
+  </svg>
 </template>
 
 <script>
@@ -16,12 +26,12 @@
             layout: {
                 type: Object,
                 default: () => ({
-                    width: 900,
-                    height: 250,
+                    width: 335,
+                    height: 130,
                     margin: {
-                        left: 40,
+                        left: 30,
                         right: 0,
-                        top: 50,
+                        top: 30,
                         bottom: 30
                     }
                 })
@@ -32,7 +42,7 @@
             },
             colors: {
                 type: Array,
-                default: () => ['#ffffd9', '#edf8b1', '#c7e9b4', '#7fcdbb', '#41b6c4', '#1d91c0', '#225ea8', '#253494', '#081d58']
+                default: () => ['#FFF200', '#C7EB3A', '#90E475', '#58DDAF', '#20D6E9', '#41ACEF', '#6282F4', '#8358FA', '#A42EFF']
             }
         },
         data() {
@@ -40,6 +50,32 @@
                 days: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
                 times: ['1a', '2a', '3a', '4a', '5a', '6a', '7a', '8a', '9a', '10a', '11a', '12a', '1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '10p', '11p', '12p'],
                 colorScale: this.getColorScale()
+            }
+        },
+        computed: {
+            padded() {
+                const width = this.layout.width - this.layout.margin.left - this.layout.margin.right
+                const height = this.layout.height - this.layout.margin.top - this.layout.margin.bottom
+
+                return {width, height}
+            },
+            viewBox() {
+                return `0 0 ${this.layout.width} ${this.layout.height}`
+            },
+            stageTransform() {
+                return `translate(${this.layout.margin.left},${this.layout.margin.top})`
+            },
+            gridSize() {
+                return Math.floor(this.padded.width / 24)
+            },
+            dayLabelsTransform() {
+                return `translate(0,${this.gridSize})`
+            },
+            timeLabelsTransform() {
+                return `translate(${this.gridSize},0)`
+            },
+            cardsTransform() {
+                return `translate(${this.gridSize * 1.5},${this.gridSize / 3})`
             }
         },
         mounted() {
@@ -59,6 +95,7 @@
                     .text(d => d)
                     .attr('x', 0)
                     .attr('y', (d, i) => i * this.gridSize)
+                    .style('text-anchor', 'end')
                     .attr('class', (d, i) => (i >= 0 && i <= 4) ? 'day-label mono workweek' : 'day-label mono')
             },
             drawTimeLabels() {
@@ -69,6 +106,7 @@
                     .text(d => d)
                     .attr('x', (d, i) => i * this.gridSize)
                     .attr('y', 0)
+                    .style('text-anchor', 'middle')
                     .attr('class', (d, i) => (i >= 8 && i <= 17) ? 'time-label mono worktime' : 'time-label mono')
             },
             drawCards() {
@@ -93,58 +131,24 @@
 
                 $cards.exit().remove()
             }
-        },
-        computed: {
-            //  Twice
-            padded() {
-                const width = this.layout.width + this.layout.margin.left + this.layout.margin.right
-                const height = this.layout.height + this.layout.margin.top + this.layout.margin.bottom
-
-                return {width, height}
-            },
-            //  Twice
-            viewBox() {
-                return `0 0 ${this.padded.width} ${this.padded.height}`
-            },
-            //  Twice
-            stageTransform() {
-                return `translate(${this.layout.margin.left},${this.layout.margin.top})`
-            },
-            gridSize() {
-                return Math.floor(this.layout.width / 24)
-            },
-            dayLabelsTransform() {
-                return `translate(0,${this.gridSize})`
-            },
-            timeLabelsTransform() {
-                return `translate(${this.gridSize},0)`
-            },
-            cardsTransform() {
-                return `translate(${this.gridSize / 4.5},${this.gridSize / 3})`
-            }
         }
     }
 </script>
 
-<style>
-    .day-label,
-    .time-label {
-        text-anchor: end;
-    }
+<style lang="scss">
+  text.mono {
+    font-size: 0.5em;
+    font-weight: 400;
+    fill: #aaa;
+  }
 
-    text.mono {
-        font-size: 9pt;
-        font-family: Consolas, Courier;
-        fill: #aaa;
-    }
+  text.workweek,
+  text.worktime {
+    fill: #000;
+  }
 
-    text.workweek,
-    text.worktime {
-        fill: #000;
-    }
-
-    rect.bordered {
-        stroke: #e6e6e6;
-        stroke-width: 2px;
-    }
+  rect.bordered {
+      stroke: #e6e6e6;
+      stroke-width: 2px;
+  }
 </style>

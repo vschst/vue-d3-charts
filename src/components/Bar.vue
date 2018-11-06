@@ -1,16 +1,28 @@
 <template>
-    <svg preserveAspectRatio="xMinYMin meet" :viewBox="viewBox">
-        <g :transform="stageTransform">
-            <g ref="bandSeries"></g>
-            <g ref="bandsAxis" :transform="xAxisTransform"></g>
-            <g ref="valueAxis"></g>
-            <g ref="legend"></g>
-            <g v-show="tooltip.show" :transform="tooltipTranslate">
-                <rect :width="layout.tooltip.width" :height="layout.tooltip.height" class="tooltip-frame"></rect>
-                <text :dx="layout.tooltip.text.dx" :dy="layout.tooltip.text.dy">{{tooltip.value}}</text>
-            </g>
-        </g>
-    </svg>
+  <svg 
+    :viewBox="viewBox" 
+    preserveAspectRatio="xMinYMin meet">
+    <g :transform="stageTransform">
+      <g ref="bandSeries"/>
+      <g 
+        ref="bandsAxis" 
+        :transform="bandsAxisTransform"/>
+      <g ref="valueAxis"/>
+      <g ref="legend"/>
+      <g 
+        v-show="tooltip.show" 
+        :transform="tooltipTransform"
+        class="bar-tooltip">
+        <rect 
+          :width="layout.tooltip.width" 
+          :height="layout.tooltip.height" 
+          class="frame"/>
+        <text 
+          :dx="layout.tooltip.text.dx" 
+          :dy="layout.tooltip.text.dy">{{ tooltip.value }}</text>
+      </g>
+    </g>
+  </svg>
 </template>
 
 <script>
@@ -27,10 +39,10 @@
                         left: 40,
                         right: 30,
                         top: 20,
-                        bottom: 60
+                        bottom: 80
                     },
                     tooltip: {
-                        width: 60,
+                        width: 150,
                         height: 20,
                         text: {
                             dx: 10,
@@ -38,7 +50,7 @@
                         }
                     },
                     legend: {
-                        width: 130,
+                        width: 200,
                         itemSize: 30,
                         rect: {
                             size: 19,
@@ -71,9 +83,9 @@
         data() {
             return {
                 scale: {
-                    band: this.getScaleBand(),
-                    bandItem: this.getScaleBandItem(),
-                    height: this.getScaleHeight(),
+                    band: this.getBandScale(),
+                    bandItem: this.getBandItemScale(),
+                    value: this.getValueScale(),
                     colors: this.getColorsScale()
                 },
                 tooltip: {
@@ -81,6 +93,38 @@
                     pos: {x: 0, y: 0},
                     value: ''
                 }
+            }
+        },
+        computed: {
+            //  Twice
+            padded() {
+                const width = this.layout.width + this.layout.margin.left + this.layout.margin.right
+                const height = this.layout.height + this.layout.margin.top + this.layout.margin.bottom
+
+                return {width, height}
+            },
+            //  Twice
+            viewBox() {
+                return `0 0 ${this.padded.width} ${this.padded.height}`
+            },
+            //  Twice
+            stageTransform() {
+                return `translate(${this.layout.margin.left},${this.layout.margin.top})`
+            },
+            getBandNames() {
+                return this.data.map(d => d.name)
+            },
+            bandsAxisTransform() {
+                return `translate(0,${this.layout.height})`
+            },
+            tooltipTransform() {
+                let x = this.tooltip.pos.x
+
+                if (x + this.layout.tooltip.width > this.layout.width) {
+                    x -= (this.layout.tooltip.width + 40)
+                }
+
+                return `translate(${x},${this.tooltip.pos.y})`
             }
         },
         created() {
@@ -96,14 +140,14 @@
             }
         },
         methods: {
-            getScaleBand() {
+            getBandScale() {
                 return d3.scaleBand().rangeRound([0, this.layout.width]).paddingInner(0.1)
             },
-            getScaleBandItem() {
+            getBandItemScale() {
                 return d3.scaleBand().padding(0.05)
             },
-            getScaleHeight() {
-                return  d3.scaleLinear().rangeRound([this.layout.height, 0]).domain([0, 1.1 * d3.max(this.data, d => d3.max(this.columns, key => d[key]))])
+            getValueScale() {
+                return d3.scaleLinear().rangeRound([this.layout.height, 0]).domain([0, 1.1 * d3.max(this.data, d => d3.max(this.columns, key => d[key]))])
             },
             //  Double
             getColorsScale() {
@@ -117,10 +161,17 @@
                 const $axis = d3.select(this.$refs[ref])
                 const axisGenerator = {
                     bandsAxis: d3.axisBottom(this.scale.band),
-                    valueAxis: d3.axisLeft(this.scale.height).ticks(null, 's')
+                    valueAxis: d3.axisLeft(this.scale.value).ticks(null, 's')
                 }
 
                 $axis.call(axisGenerator[ref])
+
+                if (ref === 'bandsAxis') {
+                    $axis.selectAll('text')
+                        .style('text-anchor', 'start')
+                        .attr('dy', '1.55em')
+                        .attr('transform', 'rotate(65)')
+                }
             },
             drawBands() {
                 const $bandSeries = d3.select(this.$refs.bandSeries)
@@ -131,10 +182,11 @@
                     .selectAll('rect').data(d => this.columns.map(key => ({'key': key, value: d[key]})))
                     .enter()
                     .append('rect')
+                    .attr('class', 'bar')
                     .attr('x', d => this.scale.bandItem(d.key))
-                    .attr('y', d => this.scale.height(d.value))
+                    .attr('y', d => this.scale.value(d.value))
                     .attr('width', this.scale.bandItem.bandwidth())
-                    .attr('height', d => this.layout.height - this.scale.height(d.value))
+                    .attr('height', d => this.layout.height - this.scale.value(d.value))
                     .attr('fill', d => this.scale.colors(d.key))
 
                 if (this.options.tooltip) {
@@ -150,7 +202,7 @@
                     .attr('x', this.layout.width - this.layout.legend.width)
                     .attr('width', this.layout.legend.width)
                     .attr('height', this.layout.legend.itemSize * this.columns.length)
-                    .attr('fill', 'white')
+                    .attr('fill', '#ececec')
 
                 const $legendItem = $legend.selectAll('g').data(this.columns)
                     .enter()
@@ -187,38 +239,19 @@
                 this.tooltip.show = true
             }
         },
-        computed: {
-            //  Twice
-            padded() {
-                const width = this.layout.width + this.layout.margin.left + this.layout.margin.right
-                const height = this.layout.height + this.layout.margin.top + this.layout.margin.bottom
-
-                return {width, height}
-            },
-            //  Twice
-            viewBox() {
-                return `0 0 ${this.padded.width} ${this.padded.height}`
-            },
-            //  Twice
-            stageTransform() {
-                return `translate(${this.layout.margin.left},${this.layout.margin.top})`
-            },
-            getBandNames() {
-                return this.data.map(d => d.name)
-            },
-            xAxisTransform() {
-                return `translate(0,${this.layout.height})`
-            },
-            tooltipTranslate() {
-                return `translate(${this.tooltip.pos.x},${this.tooltip.pos.y})`
-            }
-        }
     }
 </script>
 
-<style>
-    .tooltip-frame {
-        fill: white;
+<style lang="scss">
+    .bar-tooltip {
+      .frame {
+        fill: #cccccc;
         opacity: 0.8
+      }
+
+      text {
+        font-size: 0.8em;
+        font-weight: bold;
+      }
     }
 </style>

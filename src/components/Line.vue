@@ -1,24 +1,53 @@
 <template>
-    <svg preserveAspectRatio="xMinYMin meet" :viewBox="viewBox">
-        <g :transform="stageTransform">
-            <g ref="xAxis" :transform="xAxisTransform"></g>
-            <g ref="yAxis"></g>
-            <g ref="lines" :transform="linesTransform"></g>
-            <g ref="legend"></g>
-            <g ref="tooltip" v-show="tooltip.show">
-                <line x1="0" y1="0" x2="0" :y2="layout.height" class="hover-line"></line>
-                <g :transform="tooltipFrameTransform(layout.height)" class="x-frame">
-                    <rect :width="layout.tooltip.width" :height="layout.tooltip.height"></rect>
-                    <text :dx="layout.tooltip.text.dy" :dy="layout.tooltip.text.dy">{{getTooltipFrameBottomText(tooltip.index)}}</text>
-                </g>
-            </g>
-            <rect ref="overlay" :width="layout.width" :height="layout.height" class="overlay"></rect>
-        </g>
-    </svg>
+  <svg 
+    :viewBox="viewBox" 
+    preserveAspectRatio="xMinYMin meet" 
+    class="line-chart">
+    <g :transform="stageTransform">
+      <g 
+        ref="xAxis" 
+        :transform="xAxisTransform"/>
+      <g ref="yAxis"/>
+      <g 
+        ref="lines" 
+        :transform="linesTransform"/>
+      <g ref="legend"/>
+      <line
+        v-show="tooltip.show"
+        :x1="tooltip.x"
+        :x2="tooltip.x"
+        :y2="layout.height"
+        y1="0"
+        class="hover-line"/>
+      <g 
+        v-show="tooltip.show"
+        ref="tooltip"
+        :transform="tooltipTransform"
+        class="line-tooltip">
+        <rect
+          :width="layout.tooltip.width"
+          :height="layout.tooltip.height"
+          :rx="layout.tooltip.rx"
+          :ry="layout.tooltip.ry"
+          class="frame"/>
+        <text 
+          :x="layout.tooltip.text.x"
+          :y="layout.tooltip.text.yGrid"
+          class="x-text">{{ getTooltipTextX(tooltip.index) }}</text>
+      </g>
+      <rect 
+        ref="overlay"
+        :width="layout.width" 
+        :height="layout.height" 
+        class="overlay"/>
+    </g>
+  </svg>
 </template>
 
 <script>
     import * as d3 from 'd3'
+
+    const circleSymbol = '●'
 
     export default {
         props: {
@@ -28,22 +57,23 @@
                     width: 900,
                     height: 500,
                     margin: {
-                        left: 40,
+                        left: 50,
                         right: 30,
                         top: 20,
                         bottom: 60
                     },
                     tooltip: {
-                        width: 100,
-                        height: 20,
-                        padding: 2,
+                        width: 250,
+                        height: 100,
+                        rx: 5,
+                        ry: 5,
                         text: {
-                            dx: 30,
-                            dy: 15
+                            x: 10,
+                            yGrid: 20
                         }
                     },
                     legend: {
-                        width: 150,
+                        width: 180,
                         itemSize: 30,
                         circle: {
                             size: 7,
@@ -63,7 +93,7 @@
             },
             colors: {
                 type: Array,
-                default: () => []
+                default: () => ['#80b081', '#b08097']
             },
             names: {
                 type: Array,
@@ -97,6 +127,13 @@
                     legend: true,
                     tooltip: true
                 })
+            },
+            axisLegend: {
+                type: Object,
+                default: () => ({
+                    x: 'Date',
+                    y: 'Value'
+                })
             }
         },
         data() {
@@ -107,10 +144,58 @@
                     colors: this.getColorsScale()
                 },
                 tooltip: {
-                    show: true,
+                    show: false,
                     x: 0,
+                    y: 0,
                     index: null
                 }
+            }
+        },
+        computed: {
+            padded() {
+                const width = this.layout.width + this.layout.margin.left + this.layout.margin.right
+                const height = this.layout.height + this.layout.margin.top + this.layout.margin.bottom
+
+                return {width, height}
+            },
+            viewBox() {
+                return `0 0 ${this.padded.width} ${this.padded.height}`
+            },
+            stageTransform() {
+                return `translate(${this.layout.margin.left},${this.layout.margin.top})`
+            },
+            xAxisTransform() {
+                return `translate(0,${this.layout.height})`
+            },
+            linesTransform() {
+                return `translate(0,-${this.layout.margin.top})`
+            },
+            tooltipTransform() {
+                const xOffset = 10
+                let [x, y] = [this.tooltip.x + xOffset, this.tooltip.y]
+
+                if (x + this.layout.tooltip.width > this.layout.width) {
+                    x -= (this.layout.tooltip.width + 2*xOffset)
+                }
+
+                if (y + this.layout.tooltip.height > this.layout.height) {
+                    y = this.layout.height - this.layout.tooltip.height - xOffset
+                }
+
+                return `translate(${x},${y})`
+            }
+        },
+        watch: {
+            'tooltip.index': function(val) {
+                const $tooltip = d3.select(this.$refs.tooltip)
+
+                $tooltip.selectAll('.item').select('.value').text(d => this.parse.y(this.data[val][d]))
+
+                const $lines = d3.select(this.$refs.lines)
+
+                $lines.selectAll('.tooltip-point')
+                    .attr('cx', this.scale.x(this.parse.x(this.data[val].x)))
+                    .attr('cy', d => this.scale.y(this.parse.y(this.data[val][d])))
             }
         },
         mounted() {
@@ -127,23 +212,6 @@
                 this.drawTooltip()
             }
         },
-        watch: {
-            'tooltip.index': function(val) {
-                const $tooltip = d3.select(this.$refs.tooltip)
-                    .attr('transform', `translate(${this.tooltip.x},0)`)
-
-                const $pointFrame = $tooltip.selectAll('.point-frame')
-                    .data(this.lines)
-                    .attr('transform', d => {
-                        const offset = this.layout.margin.top + this.layout.tooltip.height
-
-                        return this.tooltipFrameTransform(this.scale.y(this.parse.y(this.data[val][d])) - offset, -1)
-                    })
-
-                $pointFrame.select('text')
-                    .text(d => this.data[val][d])
-            }
-        },
         methods: {
             initScale(axis) {
                 switch (this.scaleType[axis]) {
@@ -151,6 +219,8 @@
                         return d3.scaleTime()
                     case 'linear':
                         return d3.scaleLinear()
+                    case 'log':
+                        return d3.scaleLog().base(Math.E)
                 }
             },
             extentsY() {
@@ -177,7 +247,25 @@
                     yAxis: d3.axisLeft(this.scale.y).ticks(this.ticks.y.count).tickFormat(this.ticks.y.format)
                 }
 
-                $axis.call(axisGenerator[ref])
+                const $$axis = $axis.call(axisGenerator[ref])
+
+                if (ref === 'xAxis') {
+                    $$axis.append('text')
+                        .attr('dx', this.layout.width - 5)
+                        .attr('dy', '-0.5em')
+                        .style('text-anchor', 'end')
+                        .text(this.axisLegend.x)
+                        .attr('class', 'legend')
+                }
+                else if (ref === 'yAxis') {
+                    $$axis.append('text')
+                        .attr('transform', 'rotate(-90)')
+                        .attr('y', 6)
+                        .attr('dy', '.71em')
+                        .style('text-anchor', 'end')
+                        .text(this.axisLegend.y)
+                        .attr('class', 'legend')
+                }
             },
             getPoints(key) {
                 return this.data.map(value => ({x: value.x, y: value[key]}))
@@ -209,22 +297,21 @@
                         .attr('class', 'area')
                         .attr('d', d => area(this.getPoints(d)))
                         .style('fill', (d, i) => this.scale.colors(i))
-                        .style('fill-opacity', 0.25)
+                        .style('fill-opacity', 0.6)
                         .style('stroke', 'none')
                 }
 
-                //  Drawing points
-                $series.style('fill', '#fff')
+                //  Drawing tooltip points
+                $series.append('circle')
+                    .attr('class', 'tooltip-point')
+                    .attr('r', 4)
+                    .attr('cx', (d, i) => this.scale.x(this.parse.x(this.data[i].x)))
+                    .attr('cy', (d, i) => this.scale.y(this.parse.y(this.data[i][d])))
+                    .style('fill', '#fff')
                     .style('stroke', (d, i) => this.scale.colors(i))
-                    .selectAll('.point')
-                    .data(d => this.getPoints(d))
-                    .enter()
-                    .append('circle')
-                    .attr('class', 'point')
-                    .attr('r', 3)
-                    .attr('cx', d => this.scale.x((this.parse.x(d.x))))
-                    .attr('cy', d => this.scale.y((this.parse.y(d.y))))
-                    .style('stroke-width', 2)
+                    .style('stroke-width', 4)
+                    .style('stroke-opacity', 0.3)
+                    .style('display', 'none')
             },
             drawLegend() {
                 const $legend = d3.select(this.$refs.legend)
@@ -234,7 +321,7 @@
                     .attr('x', legendX)
                     .attr('width', this.layout.legend.width)
                     .attr('height', this.layout.legend.itemSize * this.names.length)
-                    .attr('fill', 'white')
+                    .attr('fill', '#ececec')
 
                 const $legendItem = $legend.selectAll('g').data(this.names)
                     .enter()
@@ -248,7 +335,7 @@
                     .attr('cx', 2*circlePadding)
                     .attr('cy', 2*circlePadding)
                     .attr('r', circleSize)
-                    .attr('fill',this.scale.colors)
+                    .attr('fill', (d, i) => this.scale.colors(i))
 
                const textPadding = this.layout.legend.textPadding
 
@@ -264,78 +351,93 @@
                     .on('mouseout', this.mouseover)
                     .on('mousemove', this.mousemove)
 
-                const $pointFrame = d3.select(this.$refs.tooltip)
-                    .selectAll('.point-frame')
-                    .data(this.lines)
+                const $tooltipItem = d3.select(this.$refs.tooltip).selectAll('.item').data(this.lines)
                     .enter()
-                    .append('g')
-                    .attr('class', 'point-frame')
+                    .append('text')
+                    .attr('class', 'item')
+                    .attr('transform', (d, i) => `translate(10,${(i + 2) * this.layout.tooltip.text.yGrid})`)
 
-                $pointFrame.append('rect')
-                    .attr('width', this.layout.tooltip.width)
-                    .attr('height', this.layout.tooltip.height)
+                $tooltipItem.append('tspan')
+                    .attr('class', 'circle')
+                    .attr('x', 0)
+                    .style('fill', this.scale.colors)
+                    .text(circleSymbol)
 
-                $pointFrame.append('text')
-                    .attr('dx', this.layout.tooltip.text.dx)
-                    .attr('dy', this.layout.tooltip.text.dy)
+                $tooltipItem.append('tspan').attr('dx', 4).text(d => `${d}: `)
+
+                $tooltipItem.append('tspan').attr('class', 'value').attr('dx', 0)
             },
             mouseover() {
+                d3.selectAll('.tooltip-point').style('display', 'none')
+
                 this.tooltip.show = false
             },
             mousemove() {
                 const scales = this.data.map(d => this.scale.x(this.parse.x(d.x)))
-                const index = d3.bisect(scales, d3.mouse(this.$el)[0], 1) - 1
+                const index = d3.bisect(scales, d3.mouse(this.$refs.overlay)[0], 1) - 1
                 const data = this.data[index]
 
                 this.tooltip.x = this.scale.x(this.parse.x(data.x))
+                this.tooltip.y = d3.mouse(this.$refs.overlay)[1]
+
                 this.tooltip.index = index
+
+                d3.selectAll('.tooltip-point').style('display', null)
+
                 this.tooltip.show = true
             },
-            tooltipFrameTransform(height, reflect = 1) {
-                return `translate(${this.layout.tooltip.padding},${height + (reflect * this.layout.tooltip.padding)})`
-            },
-            getTooltipFrameBottomText(index) {
+            getTooltipTextX(index) {
                 return (index !== null) ? this.data[index].x : ''
             }
         },
-        computed: {
-            padded() {
-                const width = this.layout.width + this.layout.margin.left + this.layout.margin.right
-                const height = this.layout.height + this.layout.margin.top + this.layout.margin.bottom
-
-                return {width, height}
-            },
-            viewBox() {
-                return `0 0 ${this.padded.width} ${this.padded.height}`
-            },
-            stageTransform() {
-                return `translate(${this.layout.margin.left},${this.layout.margin.top})`
-            },
-            xAxisTransform() {
-                return `translate(0,${this.layout.height})`
-            },
-            linesTransform() {
-                return `translate(0,-${this.layout.margin.top})`
-            }
-        }
     }
 </script>
 
-<style>
-    .overlay {
+<style lang="scss">
+    .line-chart {
+      width: 100%;
+
+      .legend {
+        fill: black;
+        font-size: 1em;
+      }
+
+      .overlay {
         fill: none;
         pointer-events: all;
-    }
+      }
 
-    .hover-line {
+      .hover-line {
         stroke: #B74779;
-        stroke-width: 2px;
-        stroke-dasharray: 3,3;
-    }
+        stroke-width: 1px;
+        stroke-dasharray: 4, 4;
+      }
 
-    .x-frame rect,
-    .point-frame rect {
-        fill: gray;
-        opacity: 0.95
+      .line-tooltip {
+        .frame {
+          fill: #cccccc;
+          stroke: #b3b3b3;
+          stroke-width: 2px;
+          opacity: 0.8
+        }
+
+        .x-text {
+          font-size:13px;
+          color:rgba(23, 24, 27, 0.85);
+          fill:rgba(23, 24, 27, 0.85);
+        }
+
+        tspan {
+          font-size: 0.8em;
+        }
+
+        tspan.circle {
+          font-size: 0.6em;
+        }
+
+        tspan.value {
+          font-weight: bold;
+        }
+      }
     }
 </style>

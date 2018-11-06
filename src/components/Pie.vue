@@ -1,11 +1,14 @@
 <template>
-    <svg preserveAspectRatio="xMinYMin meet" :viewBox="viewBox">
-        <g :transform="stageTransform">
-            <g ref="slices"></g>
-            <g ref="labels"></g>
-            <g ref="lines"></g>
-        </g>
-    </svg>
+  <svg 
+    :viewBox="viewBox" 
+    preserveAspectRatio="xMinYMin meet" 
+    class="pie-chart">
+    <g :transform="stageTransform">
+      <g ref="slices"/>
+      <g ref="labels"/>
+      <g ref="lines"/>
+    </g>
+  </svg>
 </template>
 
 <script>
@@ -16,8 +19,8 @@
             layout: {
                 type: Object,
                 default: () => ({
-                    width: 670,
-                    height: 240
+                    width: 335,
+                    height: 130
                 })
             },
             data: {
@@ -32,6 +35,20 @@
         data() {
             return {
                 colorScale: this.getColorScale()
+            }
+        },
+        computed: {
+            viewBox() {
+                return `0 0 ${this.layout.width} ${this.layout.height}`
+            },
+            stageTransform() {
+                return `translate(${this.layout.width / 2},${this.layout.height / 2})`
+            },
+            radius() {
+                return Math.min(this.layout.width, this.layout.height) / 2
+            },
+            sumValue() {
+                return this.data.reduce((sum, d) => sum + d.value, 0)
             }
         },
         mounted() {
@@ -64,9 +81,12 @@
             midAngle(d) {
                 return d.startAngle + (d.endAngle - d.startAngle) / 2
             },
+            filterItem(d) {
+                return ((d.value / this.sumValue) > 0.03)
+            },
             drawLabels() {
                 const $labels = d3.select(this.$refs.labels)
-                const $text = $labels.selectAll('text').data(this.pie(this.data))
+                const $text = $labels.selectAll('text').data(this.pie(this.data.filter(this.filterItem)))
 
                 $text.enter()
                     .append('text')
@@ -87,7 +107,7 @@
             },
             drawLines() {
                 const $lines = d3.select(this.$refs.lines)
-                const $polyline = $lines.selectAll('polyline').data(this.pie(this.data))
+                const $polyline = $lines.selectAll('polyline').data(this.pie(this.data.filter(this.filterItem)))
 
                 $polyline.enter()
                     .append('polyline')
@@ -101,35 +121,27 @@
 
                 $polyline.exit().remove()
             }
-        },
-        computed: {
-            viewBox() {
-                return `0 0 ${this.layout.width} ${this.layout.height}`
-            },
-            stageTransform() {
-                return `translate(${this.layout.width / 2},${this.layout.height / 2})`
-            },
-            radius() {
-                return Math.min(this.layout.width, this.layout.height) / 2
-            }
         }
     }
 </script>
 
-<style>
-    path.slice{
-        stroke-width: 2px;
-    }
+<style lang="scss">
+    .pie-chart {
+        width: 100%;
 
-    text {
-        font-size: 9pt;
-        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    }
+        path.slice {
+            stroke-width: 2px;
+        }
 
-    polyline{
-        opacity: .3;
-        stroke: black;
-        stroke-width: 1px;
-        fill: none;
+        text {
+            font-size: 60%;
+        }
+
+        polyline {
+            opacity: .3;
+            stroke: black;
+            stroke-width: 1px;
+            fill: none;
+        }
     }
 </style>
