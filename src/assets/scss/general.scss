@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css?family=Lato');
+
+body {
+  font-family: 'Lato', monospace;
+  font-weight: 300;
+}
+
+.layout-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.layout-container {
+  width: 1000px;
+}
+
+.line-chart,
+.bar-chart {
+  text {
+    font-family: 'Lato', monospace;
+  }
+}
+
+svg {
+  background-color: #fbfbfb;
+}

@@ -1,19 +1,23 @@
 <template>
   <svg
-    :viewBox="viewBox" 
-    preserveAspectRatio="xMinYMin meet" 
-    class="simple-line-chart">
-    <defs ref="defs"/>
+    :viewBox="viewBox"
+    preserveAspectRatio="xMinYMin meet"
+    class="simple-line-chart"
+  >
+    <defs ref="defs" />
     <g :transform="stageTransform">
-      <g 
+      <g
         ref="dateAxis"
-        :transform="dateAxisTransform" 
-        class="date-axis axis"/>
-      <g 
-        ref="valueAxis" 
-        class="value-axis axis"/>
-      <g 
-        ref="line"/>
+        :transform="dateAxisTransform"
+        class="date-axis axis"
+      />
+      <g
+        ref="valueAxis"
+        class="value-axis axis"
+      />
+      <g
+        ref="line"
+      />
     </g>
   </svg>
 </template>
@@ -42,7 +46,7 @@
             },
             colors: {
                 type: Array,
-                default: () => ['#C7EB3A', '#C7EB3A', '#90E475', '#58DDAF', '#20D6E9', '#41ACEF', '#6282F4', '#8358FA', '#A42EFF']
+                default: () => ['#fff200', '#c7eb3a', '#90e475', '#58ddaf', '#20d6e9', '#41acef', '#6282f4', '#8358fa', '#a42eff']
             },
             gradientId: {
                 type: String,
@@ -103,11 +107,15 @@
         },
         methods: {
             parseTime: d3.timeParse('%Y-%m-%d'),
+            parseValue: d => Number(d),
             getDateScale() {
                 return d3.scaleTime().domain(d3.extent(this.data, d => this.parseTime(d.date)))
             },
             getValueScale() {
-                return d3.scaleLinear().domain(d3.extent(this.data, d => d.value))
+                const min = d3.min(this.data, d => this.parseValue(d.value))
+                const max = d3.max(this.data, d => this.parseValue(d.value))
+
+                return d3.scaleLinear().domain([min, (max !== 0) ? max : 1])
             },
             updateScale() {
                 this.scale.date.range([0, this.padded.width])
@@ -120,7 +128,8 @@
                 const $defs = d3.select(this.$refs.defs)
                 const $linearGradient = $defs.append('linearGradient')
                     .attr('id', this.gradientId)
-                    .attr('x1', '0%').attr('y1', '0%')
+                    .attr('gradientUnits', 'userSpaceOnUse')
+                    .attr('x1', '0%').attr('y1', '0.1%')
                     .attr('x2', '0%').attr('y2', '100%')
                     .selectAll('stop')
                     .data(this.colors)
@@ -140,7 +149,7 @@
                 $axis.call(axisGenerator[ref])
             },
             drawArea($line) {
-                const area = d3.area().x(d => this.scale.date(this.parseTime(d.date))).y0(this.padded.height).y1(d => this.scale.value(d.value)).curve(d3.curveCardinal)
+                const area = d3.area().x(d => this.scale.date(this.parseTime(d.date))).y0(this.padded.height).y1(d => this.scale.value(this.parseValue(d.value))).curve(d3.curveCardinal)
 
                 $line.append('path')
                     .datum(this.data)
@@ -149,7 +158,7 @@
                     .attr('fill', `url(#${this.gradientId})`)
             },
             drawLine($line) {
-                const line = d3.line().x(d => this.scale.date(this.parseTime(d.date))).y(d => this.scale.value(d.value)).curve(d3.curveCardinal)
+                const line = d3.line().x(d => this.scale.date(this.parseTime(d.date))).y(d => this.scale.value(this.parseValue(d.value))).curve(d3.curveCardinal)
 
                 $line.append('path')
                     .datum(this.data)
@@ -162,41 +171,41 @@
 </script>
 
 <style lang="scss">
-    .simple-line-chart {
-        width: 100%;
+  .simple-line-chart {
+    width: 100%;
 
-        .axis {
-          text {
-            font-size: 0.6em;
-            font-weight: 400;
-          }
+    .axis {
+      text {
+        font-size: 8px;
+        font-weight: 400;
+      }
 
-          path, line {
-            fill: none;
-            stroke: #000;
-            shape-rendering: crispEdges;
-          }
-        }
-
-        .date-axis.axis {
-          path {
-            display: none;
-          }
-        }
-
-        .value-axis.axis {
-          path {
-            display: none;
-          }
-        }
-
-        .line {
-            fill: none;
-            stroke-width: 2px;
-        }
-
-        .area {
-            stroke-width: 5px;
-        }
+      path, line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+      }
     }
+
+    .date-axis.axis {
+      path {
+        display: none;
+      }
+    }
+
+    .value-axis.axis {
+      path {
+        display: none;
+      }
+    }
+
+    .line {
+      fill: none;
+      stroke-width: 2px;
+    }
+
+    .area {
+      stroke-width: 5px;
+    }
+  }
 </style>

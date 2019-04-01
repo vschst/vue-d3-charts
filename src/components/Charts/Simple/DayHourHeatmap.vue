@@ -1,19 +1,25 @@
 <template>
   <svg
     :viewBox="viewBox"
-    preserveAspectRatio="xMinYMin meet">
+    preserveAspectRatio="xMinYMin meet"
+    class="day-hour-heatmap"
+  >
     <g
       ref="stage"
-      :transform="stageTransform">
+      :transform="stageTransform"
+    >
       <g
         ref="dayLabels"
-        :transform="dayLabelsTransform"/>
+        :transform="dayLabelsTransform"
+      />
       <g
         ref="timeLabels"
-        :transform="timeLabelsTransform"/>
+        :transform="timeLabelsTransform"
+      />
       <g
         ref="cards"
-        :transform="cardsTransform"/>
+        :transform="cardsTransform"
+      />
     </g>
   </svg>
 </template>
@@ -29,10 +35,10 @@
                     width: 335,
                     height: 130,
                     margin: {
-                        left: 30,
+                        left: 26,
                         right: 0,
-                        top: 30,
-                        bottom: 30
+                        top: 20,
+                        bottom: 40
                     }
                 })
             },
@@ -42,13 +48,13 @@
             },
             colors: {
                 type: Array,
-                default: () => ['#FFF200', '#C7EB3A', '#90E475', '#58DDAF', '#20D6E9', '#41ACEF', '#6282F4', '#8358FA', '#A42EFF']
+                default: () => ['#fff200', '#c7eb3a', '#90e475', '#58ddaf', '#20d6e9', '#41acef', '#6282f4', '#8358fa', '#a42eff']
             }
         },
         data() {
             return {
                 days: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
-                times: ['1a', '2a', '3a', '4a', '5a', '6a', '7a', '8a', '9a', '10a', '11a', '12a', '1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '10p', '11p', '12p'],
+                times: ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'],
                 colorScale: this.getColorScale()
             }
         },
@@ -85,7 +91,7 @@
         },
         methods: {
             getColorScale() {
-                return d3.scaleQuantile().domain([0, d3.max(this.data, d => d.value)]).range(this.colors)
+                return d3.scaleQuantile().domain(d3.extent(this.data, d => d.value)).range(this.colors)
             },
             drawDayLabels() {
                 const $dayLabel = d3.select(this.$refs.dayLabels).selectAll('.day-label').data(this.days)
@@ -107,7 +113,7 @@
                     .attr('x', (d, i) => i * this.gridSize)
                     .attr('y', 0)
                     .style('text-anchor', 'middle')
-                    .attr('class', (d, i) => (i >= 8 && i <= 17) ? 'time-label mono worktime' : 'time-label mono')
+                    .attr('class', (d, i) => (i >= 7 && i <= 18) ? 'time-label mono worktime' : 'time-label mono')
             },
             drawCards() {
                 const $cards = d3.select(this.$refs.cards).selectAll('.hour').data(this.data)
@@ -136,19 +142,23 @@
 </script>
 
 <style lang="scss">
-  text.mono {
-    font-size: 0.5em;
-    font-weight: 400;
-    fill: #aaa;
-  }
+  .day-hour-heatmap {
+    width: 100%;
 
-  text.workweek,
-  text.worktime {
-    fill: #000;
-  }
+    text.mono {
+      font-size: 8px;
+      font-weight: 400;
+      fill: #aaa;
+    }
 
-  rect.bordered {
+    text.workweek,
+    text.worktime {
+      fill: #000;
+    }
+
+    rect.bordered {
       stroke: #e6e6e6;
       stroke-width: 2px;
+    }
   }
 </style>

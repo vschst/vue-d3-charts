@@ -1,16 +1,22 @@
 <template>
-  <svg 
-    :viewBox="viewBox" 
-    preserveAspectRatio="xMinYMin meet">
+  <svg
+    :viewBox="viewBox"
+    preserveAspectRatio="xMinYMin meet"
+    class="simple-bar-chart"
+  >
     <g :transform="stageTransform">
-      <g 
-        ref="dateAxis" 
+      <g
+        ref="dateAxis"
         :transform="dateAxisTransform"
-        class="date-axis axis"/>
-      <g 
+        class="date-axis axis"
+      />
+      <g
         ref="valueAxis"
-        class="value-axis axis"/>
-      <g ref="band"/>
+        class="value-axis axis"
+      />
+      <g
+        ref="band"
+      />
     </g>
   </svg>
 </template>
@@ -26,7 +32,7 @@
                     width: 335,
                     height: 130,
                     margin: {
-                        left: 30,
+                        left: 35,
                         right: 0,
                         top: 20,
                         bottom: 20
@@ -39,7 +45,7 @@
             },
             colors: {
                 type: Array,
-                default: () => ['#FFF200', '#C7EB3A', '#90E475', '#58DDAF', '#20D6E9', '#41ACEF', '#6282F4', '#8358FA', '#A42EFF']
+                default: () => ['#fff200', '#c7eb3a', '#90e475', '#58ddaf', '#20d6e9', '#41acef', '#6282f4', '#8358fa', '#a42eff']
             },
             valueTick: {
                 type: Object,
@@ -89,21 +95,25 @@
         },
         methods: {
             parseTime: d3.timeParse('%Y-%m-%d'),
+            parseValue: d => Number(d),
             getDateScale() {
                 return d3.scaleTime().domain(d3.extent(this.data, d => this.parseTime(d.date)))
             },
             getBandScale() {
-                return d3.scaleBand().domain(this.data.map(d => d.date)).padding(0.3).round(true)
+                return d3.scaleBand().domain(this.data.map(d => d.date)).padding(0.3)
+            },
+            valueExtent() {
+                return [0, d3.max(this.data, d => this.parseValue(d.value))]
             },
             getValueScale() {
-                return  d3.scaleLinear().domain([0, d3.max(this.data, d => d.value)])
+                return  d3.scaleLinear().domain(this.valueExtent())
             },
             getColorScale() {
-                return d3.scaleQuantile().range(this.colors).domain(d3.extent(this.data, d => d.value))
+                return d3.scaleQuantile().range(this.colors).domain(this.valueExtent())
             },
             updateScale() {
                 this.scale.date.range([0, this.padded.width])
-                this.scale.band.rangeRound([0, this.padded.width])
+                this.scale.band.range([0, this.padded.width])
                 this.scale.value.range([this.padded.height, 0])
             },
             drawAxis(ref) {
@@ -121,8 +131,8 @@
                     .append('rect')
                     .attr('x', d => this.scale.band(d.date))
                     .attr('width', this.scale.band.bandwidth())
-                    .attr('y', d => this.scale.value(d.value))
-                    .attr('height', d => (this.padded.height - this.scale.value(d.value)))
+                    .attr('y', d => this.scale.value(this.parseValue(d.value)))
+                    .attr('height', d => (this.padded.height - this.scale.value(this.parseValue(d.value))))
                     .attr('class', 'bar')
                     .style('fill', this.colors[0])
 
@@ -137,34 +147,38 @@
 </script>
 
 <style lang="scss">
-  .axis {
-    text {
-      font-size: 0.6em;
-      font-weight: 400;
+  .simple-bar-chart {
+    width: 100%;
+
+    .axis {
+      text {
+        font-size: 8px;
+        font-weight: 400;
+      }
+
+      path, line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+      }
     }
 
-    path, line {
-      fill: none;
-      stroke: #000;
-      shape-rendering: crispEdges;
+    .date-axis.axis {
+      path {
+        display: none;
+      }
     }
-  }
 
-  .date-axis.axis {
-    path {
-      display: none;
+    .value-axis.axis {
+      path {
+        display: none;
+      }
     }
-  }
 
-  .value-axis.axis {
-    path {
-      display: none;
-    }
-  }
-
-  .bar {
-    &:hover {
-      fill: brown !important;
+    .bar {
+      &:hover {
+        fill: brown !important;
+      }
     }
   }
 </style>
